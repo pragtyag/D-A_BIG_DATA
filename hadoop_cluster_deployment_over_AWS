@@ -1,0 +1,275 @@
+########how to deploy hadoop cluster over AWS#########
+1.login on your aws account
+****(before create anything make sure that you have choose your country server like- mumbai,us)********
+2.open console
+
+3.create own vpc (hadoop)
+ 
+ a.start vpc
+ b.VPC with a Single Public Subnet (ip CIDR block - 10.0.0.0/19,vpcname- anything,public subnet- 10.0.0.0/24)
+ 
+
+4.setup your own security group for instances(hadoopcluster)
+  
+  a.create security group (name,groupname,description,vpc network(choose your already created vpc))
+  b.set inbound setting
+   type          protocol         port range         source
+   all tcp      tcp(6)             all                0.0.0.0/0
+   ssh(22)      tcp(6)             22                 0.0.0.0/0
+   http(80)     tcp(6)             80                 0.0.0.0/0
+   all icmp     icmp(1)            all                0.0.0.0/0
+
+  c.setup outbound setting 
+
+    type         protocol         port range         source
+   all tcp      tcp(6)             all                0.0.0.0/0
+   ssh(22)      tcp(6)             22                 0.0.0.0/0
+   http(80)     tcp(6)             80                 0.0.0.0/0
+   all icmp     icmp(1)            all                0.0.0.0/0
+ 
+  d.create finally security group
+
+5.click on ec2 to create instance
+        
+
+     a.chose platform like ubuntu/windows(choice 32bit/64bit)
+     b.choose instance type (always choose free type)
+     c.configure instance details (like no 0f instance,network(chose your own vpc(hadoop) created network))
+     d.add storage
+     e.choose name of your instance(like hadoop,or anything else you want to set)
+     f.chose your security group(hadoop cluster)(for protoclos permission )
+     g.download pem key
+     h.launch instance and wait untill states check in not is 2/2 check.
+
+###process of hadoop cluster for multinode ##########
+suppose i have i namenode and 1 datanode
+
+1.use pem key via ssh to access node
+
+ssh -v -i "/path/to/key.pem" ubuntu@ip address of namenode (work on terminal 1)
+ssh -v -i "/path/to/key.pem" ubuntu@ip address of datanode (work on terminal 2)
+
+follow same procedure to differnet terminal because if you have 1 or more node than you will have to access via terminal
+
+during this procedure may be you got an error of public key permission denied than give permission to .pem key
+
+  $ chmod 400 my-key-pair.pem
+
+2.now first of all update and upgrade your system
+
+3.install java 
+
+sudo apt-get install openjdk-7-jdk
+
+4.check ssh install or not if not than install ssh
+sudo apt-get install openssh-client
+sudo apt-get install openssh-server
+
+5.do this same thing on other node.
+
+6.create java symbolic link
+
+cd /usr/lib/jvm
+ls
+sudo ln -s java-7-openjdk-amd64/ jdk
+
+7.do the same things for other nodes
+
+8.now create a group 
+
+sudo addgroup hadoop
+
+9.create user in hadoop group
+
+sudo adduser --ingroup hadoop username
+
+10.set password for user
+
+11.give admin privilleges for that user
+
+sudo adduser username sudo
+
+12.so the same thing for others node
+
+13.now enter in creted user (follow this step on other node)
+
+14.set ip address in hosts file
+
+cd /etc/
+vim hosts
+
+public ip  public dns  private ip  name(node name)
+public ip  public dns  private ip  data(node name)
+
+15.do the same thing on differnt node
+
+16.set java path in bashrc file
+
+vim ~/.bashrc
+###paste into bashrc###
+export JAVA_HOME=/usr/lib/jvm/jdk
+export PATH=$PATH:$JAVA_HOME/bin:$PATH
+###########################
+source ~/.bashrc
+
+17.do the same thing on differnt node
+
+18.download hadoop package 
+
+wget http://www.us.apache.org/dist/hadoop/common/hadoop-2.6.0/hadoop-2.6.0.tar.gz
+
+if it will show you connecting error then follow this step
+
+$sudo vim /etc/sysctl.conf
+
+#####paste this into these file######
+#disable ipv6
+net.ipv6.conf.all.disable_ipv6 = 1
+net.ipv6.conf.default.disable_ipv6 = 1
+net.ipv6.conf.lo.disable_ipv6 = 1
+#####################################
+
+$sudo sysctl -p
+
+
+$cat /proc/sys/net/ipv6/conf/all/disable_ipv6
+
+19.untar hadoop package
+
+tar -xvf hadoop-2.6.0.tar.gz
+
+20.do the same thing on differnt node
+
+21.set hadoop path in bashrc
+vim ~/.bashrc
+
+###paste in bashrc####
+export HADOOP_HOME=/home/username/hadoop-2.6.0
+export HADOOP_MAPRED_HOME=$HADOOP_HOME
+export HADOOP_COMMON_HOME=$HADOOP_HOME
+export HADOOP_HDFS_HOME=$HADOOP_HOME
+export HADOOP_CONF_DIR=$HADOOP_HOME/etc/hadoop
+export HADOOP_YARN_HOME=$HADOOP_HOME
+export HADOOP_COMMON_LIB_NATIVE_DIR=$HADOOP_HOME/lib/native
+export PATH=$PATH:$HADOOP_HOME/sbin:$HADOOP_HOME/bin/:$HADOOP_CONF_DIR
+#####################
+source ~/.bashrc
+
+22.do the same thing on differnet node
+
+23.make ssh less connection
+follow this step only on namenode/masternode
+
+ssh-keygen -t rsa -P ''
+
+24.copy generated key
+
+cd .ssh
+cat id_rsa.pub
+
+25.paste this key code in authorized_keys
+
+vim authorized_keys
+
+26.paste these key code in differnt node authorized_keys file
+
+27.ceck ssh less connection
+
+ssh ipofothernode
+exit
+
+28.configure hadoop files
+
+cd hadoop-2.6.0
+cd etc/hadoop
+vim core-site.xml
+
+###paste this in core site ###
+<configuration>
+<property>
+<name>fs.defaultFS</name>
+<value>hdfs://master-slave:9000</value>
+</property>
+</configuration>
+##############
+
+vim yarn-site.xml
+
+###paste this in yarn site ###
+<configuration>
+<property>
+<name>yarn.resourcemanager.hostname</name>
+<value>master-slave</value>
+</property>
+
+
+
+<property>
+<name>yarn.nodemanager.aux-services</name>
+<value>mapreduce_shuffle</value>
+</property>
+</configuration>
+##############
+
+vim hdfs-site.xml
+
+###paste this in hdfs site ###
+<configuration>
+<property>
+<name>dfs.replication</name>
+<value>3</value>
+</property>
+</configuration>
+##############
+
+than changes in mapreduce but before change mapreduce use this
+
+mv mapreduce-site.xml.template mapreduce.site.xml
+
+vim mapreduce-site.xml
+
+###paste this in mapreduce site ###
+<configuration>
+<property>
+<name>mapreduce.framework.name</name>
+<value>yarn</value>
+</property>
+</configuration>
+##############
+
+vim slaves
+
+###paste this in slaves###
+master-slave
+slave(i have only one datanode)
+
+29.do the same thing on other node
+
+by manual configure or just typing command
+
+for i in 'cat /home/username/hadoop-2.6.0/etc/hadoop/slaves'; do \
+echo $i; rsync -avxP --exclude=logs /home/username/hadoop-2.6.0/ $i:/home/username/hadoop-2.6.0/; \
+done
+
+30.check all configuration on differnt node
+make sure all the configuration of hdfs ,core,mapred,yarn,slaves is same on differnet node
+
+31.format namenode (follow this step only namenode/master)
+
+hadoop namenode -format
+
+then 
+
+31.start all daemons (type command on master/namenode)
+
+start-dfs.sh
+
+start-yarn.sh
+
+jps
+ 
+32.check daemons running or not (on other node)
+
+jps
+
+######end of hadoop cluser on AWS#######

@@ -1,0 +1,245 @@
+1.Install ubuntu (version 14 or 16)
+
+
+2.check wifi (working mode)
+
+3.Update your system from root user.
+       apt-get  update
+	   
+       
+3.1 .how to switch from main user to root user:
+	                sudo -i (execute this from your main user)
+					
+
+4 .Always check home directory 	after user switch:
+         execute 'pwd'  on terminal
+         output expected :/home/username
+		 
+
+5.Install vim editor (install from root user)
+      apt-get install vim
+
+		 
+
+
+6.
+ Install java over all nodes of the cluster (from root user)
+	############java##
+		sudo apt-get install openjdk-7-jdk	
+		below is the command to check java version
+		       javac -version
+	###############
+
+
+7.
+    Install ssh 
+	######install ssh#########
+		sudo apt-get install openssh-client
+		sudo apt-get install openssh-server
+	##########################
+
+
+8.
+ Create User for hadoop
+	######add user############
+	    sudo useradd -m myuser
+	#########################
+
+	####set password for created user####
+	    sudo passwd myuser
+	#####################################
+
+	Note: We can work with out user creation also.
+
+4.
+ Create sshless connection:
+	####make ssh less connection with name node to data node ######
+	    Assume your user is hadoop
+	  4.1  : generate public key of system(that is user dependent)
+		        ssh-keygen -t rsa  
+                this will create public key under  "/home/username/.ssh" folder		
+				
+		 this will generate public key over the "/home/user/.ssh" path of system
+		 
+	  4.2 : Now copy this public key to authorized key of local system(localhost)
+	  
+	         create file with name "authorized_keys" 
+			 
+	         way1:just copy or cat the content of "id_rsa.pub" file
+                  past to 	authorized_keys in same folder		 
+	  
+	         way2:
+		     cat /home/hadoop2/.ssh/id_rsa.pub | ssh username@localhost 'cat >> /home/hadoop2/.ssh/authorized_keys'
+		     ex:cat ~/.ssh/id_rsa.pub | ssh hadoop@localhost 'cat >> .ssh/authorized_keys'
+
+	  Note:In multinode cluster we will send this public to all data nodes
+	################################################################
+
+5.copy hadoop package in hadoop user
+     url : wget http://www-us.apache.org/dist/hadoop/common/hadoop-2.6.5/hadoop-2.6.5.tar.gz
+     5.1 if you want to copy from different user on same machine
+	         execute this command from source user(where your package )
+			     scp hadooppackage path      username(where you want to copy)@ip(localhost):path(where you want yo copy)
+				  
+				 ex:   scp  -r /home/sorot/hadoop     hadoop@localhost:/home/hadoop/.
+				 
+				 
+  
+################################################
+
+6.open user bashfile
+   path: /home/username/.bashrc
+   
+  6.1 vi  ~/.bashrc or /home/username/.bashrc
+  6.2  go to end of file.how to switch to end of file:
+              Shift key+g
+			  
+  6.2 press insert key(i)(your file will be in edit mode)
+  
+	  copy  below java path in the end of file)
+	      export JAVA_HOME=/usr/
+          export PATH=$PATH:$JAVA_HOME
+
+	  copy hadoop path:
+	
+	     export HADOOP_HOME=/home/hadoop/hadoop
+	     export HADOOP_MAPRED_HOME=$HADOOP_HOME
+	     export HADOOP_COMMON_HOME=$HADOOP_HOME
+	     export HADOOP_HDFS_HOME=$HADOOP_HOME
+	     export HADOOP_CONF_DIR=$HADOOP_HOME/etc/hadoop
+	     export HADOOP_YARN_HOME=$HADOOP_HOME
+	     export HADOOP_COMMON_LIB_NATIVE_DIR=$HADOOP_HOME/lib/native
+	     export PATH=$PATH:$HADOOP_HOME/sbin:$HADOOP_HOME/bin/:$HADOOP_CONF_DIR
+  
+  6.3.Save bashrc file .(Esc+:+wq)
+  6.4. Reload bashrc file.
+  
+        source ~/.bashrc or /home/hadoop/.bashrc
+
+7.
+#################changing configration for hadoop config file########
+
+path of file :
+     path :/home/hadoop/hadoop/etc/hadoop/.
+	 file names:
+		  core-site.xml		
+		  hdfs-site.xml
+		  mapred-site.xml
+		  yarn-site.xml
+		  hadoop-env.sh
+		  
+		  Change log path for services:
+          filename:hadoop-env.sh
+          change below parameter:
+               export HADOOP_LOG_DIR=/home/hadoop/hadoop/logs
+
+		  
+config xml files at below path:
+     
+    core-site.xml: (for os related config change)
+          <configuration>
+		<property>
+		<name>fs.defaultFS</name>
+		<value>hdfs://localhost:9000</value>
+		</property>
+		<property>
+		<name>hadoop.tmp.dir</name>
+		<value>/home/hadoop/hadoop/tmp</value>
+		</property>
+		<property>
+		<name>dfs.permissions</name>
+		<value>false</value>
+		</property>
+		<property>
+		  <name>hadoop.proxyuser.hue.hosts</name>
+		  <value>*</value>
+		</property>
+		<property>
+		  <name>hadoop.proxyuser.hue.groups</name>
+		  <value>*</value>
+		</property>
+
+	   </configuration>
+
+     hdfs-site.xml:(for  file system related config change)
+          <configuration>
+		<property>
+		<name>dfs.replication</name>
+		<value>2</value>
+		</property>
+		<property>
+		<name>dfs.namenode.name.dir</name>
+		<value>/home/hadoop/hadoop/hdfs/namenode</value>
+		</property>
+
+		<property>
+		<name>dfs.datanode.data.dir</name>
+		<value>/home/hadoop/hadoop/hdfs/datanode</value>
+		</property>
+
+		<property>
+		  <name>dfs.webhdfs.enabled</name>
+		  <value>true</value>
+		</property>
+	   </configuration>
+
+      mapred-site.xml : (for map reduce related)
+	  
+		  <configuration>
+			<property>
+			<name>mapreduce.framework.name</name>
+			<value>yarn</value>
+			</property>
+	          </configuration>
+			  
+      yarn-site.xml: (for resource management related )
+	  
+           <configuration>
+			<property>
+			<name>mapreduce.framework.name</name>
+			<value>yarn</value>
+			</property>
+			<property>
+			    <name>yarn.resourcemanager.hostname</name>
+			    <value>localhost</value>
+			</property>
+
+			<property>
+
+			    <name>yarn.nodemanager.aux-services</name>
+			    <value>mapreduce_shuffle</value>
+
+			</property>
+
+			<property>
+
+			    <name>yarn.nodemanager.aux-services.mapreduce.shuffle.class</name>
+			    <value>org.apache.hadoop.mapred.ShuffleHandler</value>
+
+			</property>
+
+		</configuration>
+
+
+   
+8:
+   Format namenode:
+     hadoop namenode -format
+
+
+9: 
+    Now start all services:
+     start-all.sh
+
+10:Check running services:
+     execute ' jps ' on terminal
+	 
+		3122 DataNode
+		3491 ResourceManager
+		3320 SecondaryNameNode
+		3800 NodeManager
+		2969 NameNode
+		28637 Jps
+
+
+
